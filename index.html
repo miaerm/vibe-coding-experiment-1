@@ -43,7 +43,7 @@
     border: 0; background: none; color: var(--danger);
     font-size: 1.2rem; padding: 4px 8px; min-width: 44px; min-height: 44px;
   }
-  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .days { display: grid; grid-template-columns: repeat(30, 1fr); gap: 6px; }
   .day {
     display: flex; flex-direction: column; align-items: center; gap: 2px;
     padding: 6px 0; min-height: 56px; color: var(--muted); font-size: .75rem;
@@ -139,7 +139,7 @@ function render() {
 
     const days = document.createElement("div");
     days.className = "days";
-    for (let n = 6; n >= 0; n--) {
+    for (let n = 29; n >= 0; n--) {
       const d = daysAgo(n), key = dateKey(d);
       const on = h.done.includes(key);
       const b = document.createElement("button");
