@@ -43,17 +43,20 @@
     border: 0; background: none; color: var(--danger);
     font-size: 1.2rem; padding: 4px 8px; min-width: 44px; min-height: 44px;
   }
-  .days { display: grid; grid-template-columns: repeat(30, minmax(44px, 1fr)); gap: 6px; overflow-x: auto; padding-bottom: 8px; }
-  .days::-webkit-scrollbar { height: 4px; }
-  .days::-webkit-scrollbar-track { background: transparent; }
-  .days::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 2px; }
-  .day {
-    display: flex; flex-direction: column; align-items: center; gap: 2px;
-    padding: 6px 0; min-height: 56px; color: var(--muted); font-size: .75rem;
-    background: none; border: 1px solid var(--line); border-radius: 10px;
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 8px; }
+  .cal-head { display: contents; }
+  .cal-head span {
+    text-align: center; font-size: .75rem; color: var(--muted); font-weight: 600;
+    padding: 4px 0; text-transform: uppercase;
   }
-  .day .box { font-size: 1.2rem; line-height: 1.4; }
-  .day[aria-pressed=true] { background: var(--done); border-color: var(--done); color: #fff; }
+  .day {
+    display: flex; align-items: center; justify-content: center;
+    padding: 8px; min-height: 44px; color: var(--text); font-size: .9rem;
+    background: none; border: 1px solid var(--line); border-radius: 8px;
+    font-weight: 500;
+  }
+  .day:disabled { opacity: 0.2; cursor: default; }
+  .day[aria-pressed=true] { background: var(--done); border-color: var(--done); color: #fff; font-weight: 700; }
   .day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
   .empty { text-align: center; color: var(--muted); padding: 32px 0; }
 </style>
@@ -140,23 +143,49 @@ function render() {
     };
     head.append(name, st, del);
 
-    const days = document.createElement("div");
-    days.className = "days";
-    for (let n = 29; n >= 0; n--) {
-      const d = daysAgo(n), key = dateKey(d);
+    // Build calendar grid for 30 days
+    const cal = document.createElement("div");
+    cal.className = "cal";
+
+    // Add day-of-week headers
+    const headRow = document.createElement("div");
+    headRow.className = "cal-head";
+    for (const day of WEEKDAYS) {
+      const sp = document.createElement("span");
+      sp.textContent = day;
+      headRow.append(sp);
+    }
+    cal.append(headRow);
+
+    // Calculate weeks and days
+    const startDate = daysAgo(29);
+    const startDow = startDate.getDay(); // 0 = Sunday
+
+    // Add empty cells for days before month starts
+    for (let i = 0; i < startDow; i++) {
+      const empty = document.createElement("button");
+      empty.className = "day";
+      empty.disabled = true;
+      cal.append(empty);
+    }
+
+    // Add the 30 days
+    for (let n = 0; n < 30; n++) {
+      const d = daysAgo(29 - n), key = dateKey(d);
       const on = h.done.includes(key);
       const b = document.createElement("button");
-      b.className = "day" + (n === 0 ? " today" : "");
+      b.className = "day" + (n === 29 ? " today" : "");
       b.setAttribute("aria-pressed", on);
       b.setAttribute("aria-label", `${h.name}, ${key}`);
-      b.innerHTML = `<span>${n === 0 ? "Today" : WEEKDAYS[d.getDay()]}</span><span class="box">${on ? "✓" : "○"}</span>`;
+      b.textContent = d.getDate();
       b.onclick = () => {
         h.done = on ? h.done.filter(k => k !== key) : [...h.done, key];
         save(); render();
       };
-      days.append(b);
+      cal.append(b);
     }
-    card.append(head, days);
+
+    card.append(head, cal);
     list.append(card);
   }
 }
