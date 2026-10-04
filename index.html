@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Habit Tracker</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --text: #1c1e21; --muted: #6b7280;
+    --line: #e3e5e8; --accent: #4f46e5; --done: #22c55e; --danger: #dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101216; --card: #1a1d23; --text: #eceef1; --muted: #9aa1ad;
+      --line: #2b2f37; --accent: #818cf8; --done: #34d399; --danger: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px; background: var(--bg); color: var(--text);
+    font: 16px/1.4 -apple-system, system-ui, "Segoe UI", sans-serif;
+  }
+  main { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 8px 0 16px; }
+  form { display: flex; gap: 8px; margin-bottom: 16px; }
+  input[type=text] {
+    flex: 1; min-width: 0; padding: 12px; font-size: 1rem; color: var(--text);
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  }
+  button { font: inherit; cursor: pointer; }
+  .add {
+    padding: 12px 18px; border: 0; border-radius: 10px;
+    background: var(--accent); color: #fff; font-weight: 600;
+  }
+  .habit {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px; margin-bottom: 12px;
+  }
+  .head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .name { flex: 1; font-weight: 600; overflow-wrap: anywhere; }
+  .streak { color: var(--muted); font-size: .9rem; white-space: nowrap; }
+  .del {
+    border: 0; background: none; color: var(--danger);
+    font-size: 1.2rem; padding: 4px 8px; min-width: 44px; min-height: 44px;
+  }
+  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .day {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 6px 0; min-height: 56px; color: var(--muted); font-size: .75rem;
+    background: none; border: 1px solid var(--line); border-radius: 10px;
+  }
+  .day .box { font-size: 1.2rem; line-height: 1.4; }
+  .day[aria-pressed=true] { background: var(--done); border-color: var(--done); color: #fff; }
+  .day.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .empty { text-align: center; color: var(--muted); padding: 32px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Habit Tracker</h1>
+  <form id="form">
+    <input id="name" type="text" placeholder="New habit, e.g. Read 10 pages" maxlength="60" autocomplete="off" aria-label="Habit name">
+    <button class="add" type="submit">Add</button>
+  </form>
+  <div id="list"></div>
+</main>
+
+<script>
+const KEY = "habit-tracker-v1";
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// Local date as YYYY-MM-DD (avoids UTC/timezone surprises).
+function dateKey(d) {
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function daysAgo(n) {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0); // noon dodges DST edge cases
+  d.setDate(d.getDate() - n);
+  return d;
+}
+
+function load() {
+  try {
+    const data = JSON.parse(localStorage.getItem(KEY));
+    return Array.isArray(data) ? data : [];
+  } catch { return []; }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(habits)); } catch {}
+}
+
+let habits = load();
+
+// Consecutive done days ending today (or yesterday if today isn't ticked yet).
+function streak(habit) {
+  const done = new Set(habit.done);
+  let i = done.has(dateKey(daysAgo(0))) ? 0 : 1;
+  let count = 0;
+  while (done.has(dateKey(daysAgo(i)))) { count++; i++; }
+  return count;
+}
+
+function render() {
+  const list = document.getElementById("list");
+  list.replaceChildren();
+  if (!habits.length) {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = "No habits yet. Add your first one above.";
+    list.append(p);
+    return;
+  }
+  for (const h of habits) {
+    const card = document.createElement("section");
+    card.className = "habit";
+
+    const head = document.createElement("div");
+    head.className = "head";
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = h.name;
+    const s = streak(h);
+    const st = document.createElement("span");
+    st.className = "streak";
+    st.textContent = s ? `🔥 ${s} day${s === 1 ? "" : "s"}` : "No streak";
+    const del = document.createElement("button");
+    del.className = "del";
+    del.textContent = "✕";
+    del.setAttribute("aria-label", `Delete ${h.name}`);
+    del.onclick = () => {
+      if (confirm(`Delete "${h.name}"?`)) {
+        habits = habits.filter(x => x.id !== h.id);
+        save(); render();
+      }
+    };
+    head.append(name, st, del);
+
+    const days = document.createElement("div");
+    days.className = "days";
+    for (let n = 6; n >= 0; n--) {
+      const d = daysAgo(n), key = dateKey(d);
+      const on = h.done.includes(key);
+      const b = document.createElement("button");
+      b.className = "day" + (n === 0 ? " today" : "");
+      b.setAttribute("aria-pressed", on);
+      b.setAttribute("aria-label", `${h.name}, ${key}`);
+      b.innerHTML = `<span>${n === 0 ? "Today" : WEEKDAYS[d.getDay()]}</span><span class="box">${on ? "✓" : "○"}</span>`;
+      b.onclick = () => {
+        h.done = on ? h.done.filter(k => k !== key) : [...h.done, key];
+        save(); render();
+      };
+      days.append(b);
+    }
+    card.append(head, days);
+    list.append(card);
+  }
+}
+
+document.getElementById("form").addEventListener("submit", e => {
+  e.preventDefault();
+  const input = document.getElementById("name");
+  const name = input.value.trim();
+  if (!name) return;
+  habits.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, done: [] });
+  input.value = "";
+  save(); render();
+});
+
+render();
+</script>
+</body>
+</html>
