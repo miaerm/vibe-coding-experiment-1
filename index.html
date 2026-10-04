@@ -43,7 +43,10 @@
     border: 0; background: none; color: var(--danger);
     font-size: 1.2rem; padding: 4px 8px; min-width: 44px; min-height: 44px;
   }
-  .days { display: grid; grid-template-columns: repeat(30, 1fr); gap: 6px; }
+  .days { display: grid; grid-template-columns: repeat(30, minmax(44px, 1fr)); gap: 6px; overflow-x: auto; padding-bottom: 8px; }
+  .days::-webkit-scrollbar { height: 4px; }
+  .days::-webkit-scrollbar-track { background: transparent; }
+  .days::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 2px; }
   .day {
     display: flex; flex-direction: column; align-items: center; gap: 2px;
     padding: 6px 0; min-height: 56px; color: var(--muted); font-size: .75rem;
